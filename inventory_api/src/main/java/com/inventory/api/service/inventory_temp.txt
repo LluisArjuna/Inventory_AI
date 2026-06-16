@@ -1,0 +1,21 @@
+    @Transactional(readOnly = true)
+    public Page<InventoryResponse> findPublicByEmail(String name, String email, Pageable pageable) {
+        if (email != null && !email.isBlank()) {
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new ResourceNotFoundException("User", "email", email));
+            Page<Inventory> page;
+            if (name != null && !name.isBlank()) {
+                page = inventoryRepository.findByUserIdAndNameContainingIgnoreCase(user.getId(), name, pageable);
+            } else {
+                page = inventoryRepository.findByUserId(user.getId(), pageable);
+            }
+            List<Inventory> publicInventories = page.getContent().stream()
+                    .filter(Inventory::getIsPublic)
+                    .toList();
+            List<InventoryResponse> responses = publicInventories.stream()
+                    .map(inv -> toResponse(inv, null))
+                    .toList();
+            return new org.springframework.data.domain.PageImpl<>(responses, pageable, publicInventories.size());
+        }
+        return findPublic(name, pageable);
+    }
